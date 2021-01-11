@@ -41,9 +41,7 @@ class SqfEntityTable {
       this.customCode,
       this.relationType,
       this.formListTitleField,
-      this.formListSubTitleField,
-      this.objectType,
-      this.sqlStatement});
+      this.formListSubTitleField, this.objectType, this.sqlStatement});
   final String tableName;
   final String primaryKeyName;
   final List<SqfEntityField> fields;
@@ -132,6 +130,7 @@ class SqfEntityField {
       this.minValue,
       this.maxValue,
       this.sequencedBy,
+      @Deprecated('use isNotNull instead') this.formIsRequired,
       this.isPrimaryKeyField,
       this.isNotNull,
       this.isUnique,
@@ -145,6 +144,7 @@ class SqfEntityField {
   final dynamic minValue;
   final dynamic maxValue;
   final SqfEntitySequence sequencedBy;
+  final bool formIsRequired;
   final bool isPrimaryKeyField;
   final String checkCondition;
   final bool isNotNull;
@@ -165,6 +165,9 @@ class SqfEntityFieldVirtual implements SqfEntityField {
 
   @override
   final String fieldName;
+
+  @override
+  bool get formIsRequired => null;
 
   @override
   dynamic get maxValue => null;
@@ -216,6 +219,7 @@ class SqfEntityFieldRelationship implements SqfEntityField {
     this.minValue,
     this.maxValue,
     this.formDropDownTextField,
+    this.formIsRequired,
     this.relationType,
     this.manyToManyTableName,
     this.isNotNull,
@@ -233,6 +237,8 @@ class SqfEntityFieldRelationship implements SqfEntityField {
   final dynamic minValue;
   @override
   final dynamic maxValue;
+  @override
+  final bool formIsRequired;
   final String manyToManyTableName;
   final DeleteRule deleteRule;
   final RelationType relationType;
@@ -433,8 +439,7 @@ $_createObjectField
   String __createObjectField() {
     final retVal = StringBuffer();
 
-    if (_table.primaryKeyName != null &&
-        _table.primaryKeyName.isNotEmpty &&
+    if (_table.primaryKeyName != null && _table.primaryKeyName.isNotEmpty &&
         !_table.primaryKeyName.startsWith('_')) {
       retVal.writeln(
           '''static TableField _f${toCamelCase(_table.primaryKeyNames[0])};
@@ -851,8 +856,7 @@ class SqfEntityObjectBuilder {
     _retVal
       ..writeln(
           _table.primaryKeyType != PrimaryKeyType.integer_auto_incremental ||
-                  _table.primaryKeyName == null ||
-                  _table.primaryKeyName.isEmpty
+                _table.primaryKeyName == null ||  _table.primaryKeyName.isEmpty
               ? 'bool isSaved;'
               : '')
       ..writeln('BoolResult saveResult;');
@@ -862,8 +866,7 @@ class SqfEntityObjectBuilder {
   String __createBaseConstructure() {
     final _retVal = StringBuffer();
 //print('__createBaseConstructure for ${_table.tableName}');
-    if (_table.primaryKeyName != null &&
-        _table.primaryKeyName.isNotEmpty &&
+    if (_table.primaryKeyName != null && _table.primaryKeyName.isNotEmpty &&
         _table.relationType != RelationType.ONE_TO_ONE) {
       _retVal..write(', this.')..write(_table.primaryKeyName);
     }
@@ -895,8 +898,7 @@ class SqfEntityObjectBuilder {
     //   _retVal.write(',?');
     // }
     //print('__createConstructureArgs for ${_table.tableName}');
-    if (_table.primaryKeyName != null &&
-        _table.primaryKeyName.isNotEmpty &&
+    if (_table.primaryKeyName != null && _table.primaryKeyName.isNotEmpty &&
         _table.relationType != RelationType.ONE_TO_ONE &&
         (withId ||
             _table.primaryKeyType != PrimaryKeyType.integer_auto_incremental)) {
@@ -930,8 +932,7 @@ class SqfEntityObjectBuilder {
     final _retVal = StringBuffer();
     //print('__toMapString for ${_table.tableName}');
     if (_table.relationType != RelationType.ONE_TO_ONE &&
-        _table.primaryKeyName != null &&
-        _table.primaryKeyName.isNotEmpty) {
+       _table.primaryKeyName != null && _table.primaryKeyName.isNotEmpty) {
       _retVal.writeln(
           'if (${_table.primaryKeyNames[0]} != null) {map[\'${_table.primaryKeyNames[0]}\'] = ${_table.primaryKeyNames[0]};}');
     }
@@ -989,8 +990,7 @@ class SqfEntityObjectBuilder {
       //..writeln(__createObjectCollectionsFromMap().toString()) // Not tested yet
       ..writeln(__createObjectRelationsFromMap().toString());
     if (_table.primaryKeyType != PrimaryKeyType.integer_auto_incremental ||
-        _table.primaryKeyName == null ||
-        _table.primaryKeyName.isEmpty) {
+      _table.primaryKeyName == null ||  _table.primaryKeyName.isEmpty) {
       _retVal.writeln('isSaved=true;');
     }
     return _retVal.toString();
@@ -1000,8 +1000,7 @@ class SqfEntityObjectBuilder {
     //print('__createDefaultValues for ${_table.tableName}');
     final _retVal = StringBuffer(
         _table.primaryKeyType != PrimaryKeyType.integer_auto_incremental ||
-                _table.primaryKeyName == null ||
-                _table.primaryKeyName.isEmpty
+              _table.primaryKeyName == null ||   _table.primaryKeyName.isEmpty
             ? 'isSaved=false;'
             : '');
     for (final field in _table.fields.where((f) => f.defaultValue != null)) {
@@ -1456,10 +1455,10 @@ class SqfEntityObjectBuilder {
     
     /// <returns>Returns ${_table.primaryKeyNames[0]}
     Future<int> ${_hiddenMethod}save() async {
-      if (${_table.primaryKeyNames[0]} == null || ${_table.primaryKeyNames[0]} == 0 ${_table.primaryKeyType != PrimaryKeyType.integer_auto_incremental || _table.primaryKeyName == null || _table.primaryKeyName.isEmpty ? '|| !isSaved' : ''}) {
+      if (${_table.primaryKeyNames[0]} == null || ${_table.primaryKeyNames[0]} == 0 ${_table.primaryKeyType != PrimaryKeyType.integer_auto_incremental || _table.primaryKeyName == null ||  _table.primaryKeyName.isEmpty ? '|| !isSaved' : ''}) {
         ${seq.toString()}
-        ${_table.primaryKeyType != PrimaryKeyType.integer_auto_incremental || _table.primaryKeyName == null || _table.primaryKeyName.isEmpty ? '' : '${_table.primaryKeyNames[0]} ='} await _mn${_table.modelName}.insert(this);
-        ${_table.primaryKeyType != PrimaryKeyType.integer_auto_incremental || _table.primaryKeyName == null || _table.primaryKeyName.isEmpty ? 'if (saveResult != null && saveResult.success) {isSaved = true;}' : ''}
+        ${_table.primaryKeyType != PrimaryKeyType.integer_auto_incremental || _table.primaryKeyName == null ||  _table.primaryKeyName.isEmpty ? '' : '${_table.primaryKeyNames[0]} ='} await _mn${_table.modelName}.insert(this);
+        ${_table.primaryKeyType != PrimaryKeyType.integer_auto_incremental || _table.primaryKeyName == null ||  _table.primaryKeyName.isEmpty ? 'if (saveResult != null && saveResult.success) {isSaved = true;}' : ''}
           }
       else {
         // ${_table.primaryKeyNames[0]}= await _upsert(); // removed in sqfentity_gen 1.3.0+6
@@ -1469,8 +1468,7 @@ class SqfEntityObjectBuilder {
       return ${_table.primaryKeyNames[0]};
     }''');
       if (_table.relationType != RelationType.ONE_TO_ONE &&
-          _table.primaryKeyName != null &&
-          _table.primaryKeyName.isNotEmpty &&
+        _table.primaryKeyName != null &&  _table.primaryKeyName.isNotEmpty &&
           _table.primaryKeyType == PrimaryKeyType.integer_auto_incremental) {
         retVal.writeln(
             '''/// saveAs ${_table.modelName}. Returns a new Primary Key value of ${_table.modelName}
@@ -1510,8 +1508,7 @@ class SqfEntityObjectBuilder {
     }
   ''');
       if (_table.relationType != RelationType.ONE_TO_ONE &&
-          _table.primaryKeyName != null &&
-          _table.primaryKeyName.isNotEmpty &&
+         _table.primaryKeyName != null && _table.primaryKeyName.isNotEmpty &&
           _table.primaryKeyType == PrimaryKeyType.integer_auto_incremental) {
         retVal.write('''    /// saveAs ${_table.modelName}
     /// Use this method if you do not want to update existing row when conflicts another row that have the same ${_table.primaryKeyNames[0]}
@@ -1570,7 +1567,7 @@ String __createObjectRelationsPreLoad(SqfEntityTableBase _table) {
       relations.add(funcName);
     }
   }
-  //print('end __createObjectRelationsPreload for ${_table.tableName}');
+   //print('end __createObjectRelationsPreload for ${_table.tableName}');
   if (retVal.isNotEmpty) {
     return '\n      // RELATIONSHIPS PRELOAD\nif (preload || loadParents) {\nloadedFields = loadedFields ?? [];\n ${retVal.toString()}\n}          // END RELATIONSHIPS PRELOAD\n';
   }
@@ -1592,9 +1589,7 @@ String __getByIdParameters(SqfEntityTableBase _table, bool withTypes) {
 }
 
 String __getByIdWhereStr(SqfEntityTableBase _table) {
-  if (_table.primaryKeyNames.isEmpty) {
-    return '';
-  }
+  if(_table.primaryKeyNames.isEmpty){return '';}
   final retVal = StringBuffer()..write('${_table.primaryKeyNames[0]}=?');
   for (int i = 1; i < _table.primaryKeyNames.length; i++) {
     retVal.write(' AND ${_table.primaryKeyNames[i]}=?');
@@ -2454,7 +2449,7 @@ Future<List<${_table.primaryKeyTypes[0]}>> toListPrimaryKey([bool buildParameter
       ${_table.primaryKeyNames[0]}Data.add(${_table.primaryKeyNames[0]}Future[i]['${_table.primaryKeyNames[0]}'] as ${_table.primaryKeyTypes[0]});
     }
     return ${_table.primaryKeyNames[0]}Data;
-}''' : ''}
+}''':''}
 
 
 
@@ -2504,8 +2499,7 @@ Future<List<String>> toListString([VoidCallback Function(List<String> o) listStr
   String __createObjectFieldProperty() {
     //print('__createObjectFieldProperty for ${_table.tableName} primaryKeyName=${_table.primaryKeyName}');
     final retVal = StringBuffer();
-    if (_table.primaryKeyName != null &&
-        _table.primaryKeyName.isNotEmpty &&
+    if (_table.primaryKeyName != null && _table.primaryKeyName.isNotEmpty &&
         !_table.primaryKeyName.startsWith('_')) {
       retVal.writeln('''${_table.modelName}Field _${_table.primaryKeyNames[0]};
 ${_table.modelName}Field get ${_table.primaryKeyNames[0]} {
@@ -3064,8 +3058,7 @@ class SqfEntityTableBase {
           // primaryKeyName = primaryKeyName != null && primaryKeyName.isNotEmpty
           //     ? '_$primaryKeyName'
           //     : '';
-          if ((primaryKeyName == null || primaryKeyName.isEmpty) &&
-              field.isPrimaryKeyField) {
+          if ((primaryKeyName == null ||  primaryKeyName.isEmpty) && field.isPrimaryKeyField) {
             primaryKeyType = field.table.primaryKeyType;
           }
           field.fieldName =
@@ -3185,8 +3178,7 @@ class SqfEntityTableBase {
   String __createConstructure(bool isQuery, bool withId) {
     final _retVal = StringBuffer();
     //print('__createConstructure for $tableName');
-    if (primaryKeyName != null &&
-        primaryKeyName.isNotEmpty &&
+    if (primaryKeyName != null && primaryKeyName.isNotEmpty &&
         relationType != RelationType.ONE_TO_ONE &&
         (withId || primaryKeyType != PrimaryKeyType.integer_auto_incremental)) {
       _retVal..write(',')..write('this.$primaryKeyName');
@@ -3285,6 +3277,7 @@ abstract class SqfEntityFieldType {
       this.maxValue,
       this.table,
       this.sequencedBy,
+      this.formIsRequired,
       this.primaryKeyIndex,
       this.isPrimaryKeyField,
       this.isNotNull,
@@ -3300,6 +3293,7 @@ abstract class SqfEntityFieldType {
   dynamic maxValue;
   SqfEntityTableBase table;
   SqfEntitySequenceBase sequencedBy;
+  bool formIsRequired;
   bool isPrimaryKeyField;
   int primaryKeyIndex;
   bool isNotNull;
@@ -3327,6 +3321,7 @@ class SqfEntityFieldBase implements SqfEntityFieldType {
       this.maxValue,
       this.table,
       this.sequencedBy,
+      this.formIsRequired,
       this.isPrimaryKeyField,
       this.primaryKeyIndex,
       this.isNotNull,
@@ -3349,6 +3344,8 @@ class SqfEntityFieldBase implements SqfEntityFieldType {
   SqfEntityTableBase table;
   @override
   SqfEntitySequenceBase sequencedBy;
+  @override
+  bool formIsRequired;
 
   @override
   String toSqLiteFieldString() => toSqliteAddColumnString(this);
@@ -3442,6 +3439,9 @@ class SqfEntityFieldVirtualBase implements SqfEntityFieldType {
   String fieldName;
 
   @override
+  bool formIsRequired;
+
+  @override
   dynamic maxValue;
 
   @override
@@ -3511,6 +3511,7 @@ class SqfEntityFieldRelationshipBase implements SqfEntityFieldType {
       this.minValue,
       this.maxValue,
       this.formDropDownTextField,
+      this.formIsRequired,
       this.relationshipName,
       this.relationType,
       this.manyToManyTableName,
@@ -3556,6 +3557,8 @@ class SqfEntityFieldRelationshipBase implements SqfEntityFieldType {
   SqfEntityTableBase table;
   @override
   SqfEntitySequenceBase sequencedBy;
+  @override
+  bool formIsRequired;
   final List<SqfEntityFieldType> relationshipFields = <SqfEntityFieldType>[];
   String manyToManyTableName;
   SqfEntityTableBase manyToManyTable;
@@ -3766,8 +3769,7 @@ abstract class SqfEntityModelBase {
 List<TableCollectionBase> _getCollections(
     SqfEntityTableBase table, SqfEntityModelBase _m) {
   final collectionList = <TableCollectionBase>[];
-  for (var _table in _m.databaseTables
-      .where((t) => t.relationType != RelationType.MANY_TO_MANY)) {
+  for (var _table in _m.databaseTables{
     for (var field
         in _table.fields.whereType<SqfEntityFieldRelationshipBase>()) {
       if (field.table == null && _table.tableName == table.tableName) {
